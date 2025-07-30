@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Hotel Availability API - Java Lambda
+ 
+Globals:
+  Function:
+    Runtime: java21
+ 
+Resources:
+  HotelApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: HotelApiLambda
+      CodeUri: .
+      Handler: com.example.hotel.HotelApiLambda::handleRequest
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
