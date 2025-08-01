@@ -1,18 +1,38 @@
 package com.example.hotel;
- 
+
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.example.hotel.util.ResponseUtil;
 
- // main lambda function class to handle incoming http request from api gateway
-public class HotelApiLambda implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
- 
-	//method to be called when a request hits the lambda through api gateway
+import java.util.Map;
+import java.util.Optional;
+
+public class HotelApiLambda implements RequestHandler<Map<String, Object>, Map<String, Object>> {
+
+    private final Router router = new Router();
+
     @Override
-    public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
-        String path = request.getPath();
-        Router router = new Router();
-        return router.routeRequest(path, request);
+    public Map<String, Object> handleRequest(Map<String, Object> event, Context context) {
+        try {
+            //extract path using Optional
+            String path = Optional.ofNullable((String) event.get("path"))
+                                  .filter(p -> !p.trim().isEmpty())
+                                  .orElseThrow(() -> new IllegalArgumentException("Missing or invalid path"));
+
+            //extract query parameters
+            @SuppressWarnings("unchecked")
+            Map<String, String> queryParams = (Map<String, String>) event.get("queryStringParameters");
+
+            // to route
+            return router.route(path, queryParams);
+
+        } catch (IllegalArgumentException e) {
+            // Handle validation errors
+            return ResponseUtil.createErrorResponse(400, e.getMessage());
+
+        } catch (Exception e) {
+            // Catch for unexpected errors
+            return ResponseUtil.createErrorResponse(500, "Internal server error: " + e.getMessage());
+        }
     }
 }

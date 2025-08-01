@@ -1,29 +1,34 @@
 package com.example.hotel;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.example.hotel.handler.*;
- 
-//decides which handler to call based on path
+
+import com.example.hotel.handler.AvailableHotelHandler;
+import com.example.hotel.handler.HotelRequestHandler;
+import com.example.hotel.handler.SearchRequestHandler;
+import com.example.hotel.util.ResponseUtil;
+
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Optional;
+import java.util.function.Function;
+
 public class Router {
- 
-    public APIGatewayProxyResponseEvent routeRequest(String path, APIGatewayProxyRequestEvent request) {
-        switch (path) {
-          //calls hotelRequestHandler
-            case "/hotels":
-                return new HotelRequestHandler().handle(request);
-     
-           //calls SearchRequestHandler
-            case "/hotels/search":
-                return new SearchRequestHandler().handle(request);
- 
-          //calls AvailableHotelsHandler
-            case "/hotels/available":
-                return new AvailableHotelsHandler().handle(request);
- 
-            default:
-                return new APIGatewayProxyResponseEvent()
-                        .withStatusCode(404)
-                        .withBody("{\"error\": \"Invalid path\"}");
-        }
+
+    private final Map<String, Function<Map<String, String>, Map<String, Object>>> routeHandlers = new HashMap<>();
+
+    public Router() {
+        routeHandlers.put("/hotels", new HotelRequestHandler()::handle);
+        routeHandlers.put("/hotels/search", new SearchRequestHandler()::handle);
+        routeHandlers.put("/hotels/available", new AvailableHotelHandler()::handle);
+    }
+
+    public Map<String, Object> route(String path, Map<String, String> queryParams) {
+        return Optional.ofNullable(routeHandlers.get(path))
+                .map(handler -> {
+                    try {
+                        return handler.apply(queryParams);
+                    } catch (Exception e) {
+                        return ResponseUtil.createErrorResponse(500, "Handler error: " + e.getMessage());
+                    }
+                })
+                .orElseGet(() -> ResponseUtil.createErrorResponse(404, "Path not found"));
     }
 }

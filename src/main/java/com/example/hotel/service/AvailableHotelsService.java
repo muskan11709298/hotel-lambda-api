@@ -1,21 +1,27 @@
 package com.example.hotel.service;
- 
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
+
 import com.example.hotel.model.HotelResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
- 
+import com.example.hotel.util.ResponseUtil;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 public class AvailableHotelsService {
- 
-    private final ObjectMapper objectMapper = new ObjectMapper();
- 
-    public String processAvailability(APIGatewayProxyRequestEvent request) {
-        String queryParams = request.getQueryStringParameters().toString();
-        HotelResponse response = new HotelResponse("Available hotels fetched", queryParams);
- 
+
+    public Map<String, Object> getAvailableHotels() {
         try {
-            return objectMapper.writeValueAsString(response);
+            //Optional used to safely handle  null from data source
+            List<HotelResponse> availableHotels = Optional.ofNullable(StaticHotelData.getHotels())
+                    .orElseGet(List::of) // fallback to empty list
+                    .stream()
+                    .filter(HotelResponse::isAvailable)
+                    .collect(Collectors.toList());
+
+            return ResponseUtil.createSuccessResponse(availableHotels);
         } catch (Exception e) {
-            return "{\"error\": \"Failed to serialize response\"}";
+            return ResponseUtil.createErrorResponse(500, "Error retrieving available hotels: " + e.getMessage());
         }
     }
 }
